@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -83,11 +84,7 @@ export default function ProfileScreen() {
     allTimeHighScore: 0,
   });
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       console.log('Loading stats from AsyncStorage');
       
@@ -143,7 +140,14 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error('Error loading stats:', error);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Profile screen focused, reloading stats');
+      loadStats();
+    }, [loadStats])
+  );
 
   const unlockedCount = unlocks.filter(u => u.unlocked).length;
   const totalCount = unlocks.length;

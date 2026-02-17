@@ -7,10 +7,9 @@ import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
+import { useStatsTracking } from "@/hooks/useStatsTracking";
 
 const { width } = Dimensions.get('window');
-const GRID_SIZE = 6;
-const TILE_SIZE = (width - 60) / GRID_SIZE;
 
 interface Tile {
   id: string;
@@ -21,6 +20,9 @@ interface Tile {
   opacity: Animated.Value;
   isPopped: boolean;
 }
+
+const GRID_SIZE = 8;
+const TILE_SIZE = (width - 40) / GRID_SIZE;
 
 const TILE_COLORS = [
   colors.bubblePink,
@@ -39,7 +41,9 @@ export default function ChainPopScreen() {
   
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [score, setScore] = useState(0);
-  const [chainLength, setChainLength] = useState(0);
+  const [bubblesPopped, setBubblesPopped] = useState(0);
+  
+  const { updateStats } = useStatsTracking();
 
   useEffect(() => {
     generateGrid();
@@ -64,7 +68,7 @@ export default function ChainPopScreen() {
           toValue: 1,
           tension: 50,
           friction: 7,
-          delay: (row * GRID_SIZE + col) * 20,
+          delay: (row * GRID_SIZE + col) * 10,
           useNativeDriver: true,
         }).start();
         
@@ -75,13 +79,13 @@ export default function ChainPopScreen() {
     setTiles(newTiles);
   };
 
-  const findConnectedTiles = (startTile: Tile, targetColor: string, visited: Set<string> = new Set()): Tile[] => {
+  const findConnectedTiles = (startTile: Tile, targetColor: string, visited: Set<string>): Tile[] => {
     if (visited.has(startTile.id) || startTile.isPopped || startTile.color !== targetColor) {
       return [];
     }
     
     visited.add(startTile.id);
-    const connected = [startTile];
+    let connected = [startTile];
     
     const neighbors = [
       tiles.find(t => t.row === startTile.row - 1 && t.col === startTile.col),
@@ -90,41 +94,48 @@ export default function ChainPopScreen() {
       tiles.find(t => t.row === startTile.row && t.col === startTile.col + 1),
     ];
     
-    neighbors.forEach(neighbor => {
+    for (const neighbor of neighbors) {
       if (neighbor) {
-        connected.push(...findConnectedTiles(neighbor, targetColor, visited));
+        connected = connected.concat(findConnectedTiles(neighbor, targetColor, visited));
       }
-    });
+    }
     
     return connected;
   };
 
-  const popTile = (tile: Tile) => {
+  const popTile = async (tile: Tile) => {
     if (tile.isPopped) return;
     
-    console.log('User tapped tile:', tile.id);
+    console.log('User tapped tile in chain pop mode:', tile.id);
     
-    const connectedTiles = findConnectedTiles(tile, tile.color);
-    const chainLengthValue = connectedTiles.length;
+    const connectedTiles = findConnectedTiles(tile, tile.color, new Set());
     
-    if (chainLengthValue === 1) {
+    if (connectedTiles.length < 2) {
+      console.log('No chain found, single tile pop');
       return;
     }
     
+    console.log('Chain found with', connectedTiles.length, 'tiles');
+    
     if (Platform.OS !== 'web') {
-      Haptics.impactAsync(
-        chainLengthValue > 5 ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium
-      );
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     
-    setChainLength(chainLengthValue);
-    setScore(prev => prev + chainLengthValue * 10);
+    const pointsEarned = connectedTiles.length * 10;
+    const newScore = score + pointsEarned;
+    setScore(newScore);
+    
+    const newBubblesPopped = bubblesPopped + connectedTiles.length;
+    setBubblesPopped(newBubblesPopped);
+    
+    await updateStats(connectedTiles.length, pointsEarned);
+    console.log('Updated stats - bubbles:', connectedTiles.length, 'score:', pointsEarned);
     
     connectedTiles.forEach((t, index) => {
       setTimeout(() => {
         Animated.parallel([
           Animated.spring(t.scale, {
-            toValue: 1.3,
+            toValue: 1.5,
             tension: 100,
             friction: 5,
             useNativeDriver: true,
@@ -148,43 +159,40 @@ export default function ChainPopScreen() {
   };
 
   const refillGrid = () => {
-    setTiles(prev => {
-      const newTiles = prev.map(tile => {
-        if (tile.isPopped) {
-          const newTile = {
-            ...tile,
-            color: TILE_COLORS[Math.floor(Math.random() * TILE_COLORS.length)],
-            scale: new Animated.Value(0),
-            opacity: new Animated.Value(1),
-            isPopped: false,
-          };
-          
-          Animated.spring(newTile.scale, {
-            toValue: 1,
-            tension: 50,
-            friction: 7,
-            useNativeDriver: true,
-          }).start();
-          
-          return newTile;
-        }
-        return tile;
-      });
-      
-      return newTiles;
-    });
+    console.log('Refilling grid with new tiles');
+    
+    setTiles(prev => prev.map(tile => {
+      if (tile.isPopped) {
+        const newTile = {
+          ...tile,
+          color: TILE_COLORS[Math.floor(Math.random() * TILE_COLORS.length)],
+          scale: new Animated.Value(0),
+          opacity: new Animated.Value(1),
+          isPopped: false,
+        };
+        
+        Animated.spring(newTile.scale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }).start();
+        
+        return newTile;
+      }
+      return tile;
+    }));
   };
 
   const resetGame = () => {
     console.log('User reset chain pop game');
     setScore(0);
-    setChainLength(0);
+    setBubblesPopped(0);
     setTiles([]);
     setTimeout(generateGrid, 100);
   };
 
   const scoreText = score.toString();
-  const chainText = chainLength > 1 ? `${chainLength} Chain!` : '';
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -201,24 +209,15 @@ export default function ChainPopScreen() {
       />
       
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        {/* Stats Header */}
         <View style={styles.statsHeader}>
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: colors.secondary }]}>
+            <Text style={[styles.statValue, { color: colors.primary }]}>
               {scoreText}
             </Text>
             <Text style={[styles.statLabel, { color: textColor }]}>
               Score
             </Text>
           </View>
-          
-          {chainLength > 1 && (
-            <View style={[styles.chainBadge, { backgroundColor: colors.bubbleYellow }]}>
-              <Text style={styles.chainText}>
-                {chainText}
-              </Text>
-            </View>
-          )}
           
           <TouchableOpacity 
             style={[styles.resetButton, { backgroundColor: colors.secondary }]}
@@ -232,7 +231,6 @@ export default function ChainPopScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Grid */}
         <View style={styles.gridContainer}>
           <View style={styles.grid}>
             {tiles.map((tile) => {
@@ -242,8 +240,8 @@ export default function ChainPopScreen() {
                   style={[
                     styles.tile,
                     {
-                      width: TILE_SIZE - 8,
-                      height: TILE_SIZE - 8,
+                      width: TILE_SIZE,
+                      height: TILE_SIZE,
                       backgroundColor: tile.color,
                       transform: [{ scale: tile.scale }],
                       opacity: tile.opacity,
@@ -251,7 +249,7 @@ export default function ChainPopScreen() {
                   ]}
                 >
                   <TouchableOpacity
-                    activeOpacity={0.8}
+                    activeOpacity={1}
                     onPress={() => popTile(tile)}
                     style={styles.tileTouchable}
                   />
@@ -261,13 +259,9 @@ export default function ChainPopScreen() {
           </View>
         </View>
 
-        {/* Instructions */}
         <View style={styles.instructions}>
           <Text style={[styles.instructionText, { color: textColor }]}>
             Tap tiles to create chain reactions
-          </Text>
-          <Text style={[styles.instructionSubtext, { color: textColor }]}>
-            Match 2+ adjacent tiles of the same color
           </Text>
         </View>
       </SafeAreaView>
@@ -300,16 +294,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  chainBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  chainText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
   resetButton: {
     width: 48,
     height: 48,
@@ -326,18 +310,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     width: width - 40,
-    padding: 4,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   tile: {
-    margin: 4,
-    borderRadius: 12,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   tileTouchable: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
   },
   instructions: {
     paddingHorizontal: 20,
@@ -347,10 +329,5 @@ const styles = StyleSheet.create({
   instructionText: {
     fontSize: 14,
     opacity: 0.7,
-    marginBottom: 4,
-  },
-  instructionSubtext: {
-    fontSize: 12,
-    opacity: 0.5,
   },
 });

@@ -7,10 +7,9 @@ import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
+import { useStatsTracking } from "@/hooks/useStatsTracking";
 
 const { width } = Dimensions.get('window');
-const GRID_SIZE = 8;
-const TILE_SIZE = (width - 60) / GRID_SIZE;
 
 interface FlowTile {
   id: string;
@@ -19,6 +18,9 @@ interface FlowTile {
   color: string;
   animatedColor: Animated.Value;
 }
+
+const GRID_SIZE = 10;
+const TILE_SIZE = (width - 40) / GRID_SIZE;
 
 const FLOW_COLORS = [
   colors.bubblePink,
@@ -37,8 +39,10 @@ export default function ColorFlowScreen() {
   const textColor = isDark ? colors.textDark : colors.text;
   
   const [tiles, setTiles] = useState<FlowTile[]>([]);
-  const [currentColor, setCurrentColor] = useState(FLOW_COLORS[0]);
-  const [tapCount, setTapCount] = useState(0);
+  const [tapsCount, setTapsCount] = useState(0);
+  const [score, setScore] = useState(0);
+  
+  const { updateStats } = useStatsTracking();
 
   useEffect(() => {
     generateGrid();
@@ -53,7 +57,7 @@ export default function ColorFlowScreen() {
           id: `tile-${row}-${col}`,
           row,
           col,
-          color: '#F0F0F0',
+          color: '#CCCCCC',
           animatedColor: new Animated.Value(0),
         };
         
@@ -64,45 +68,48 @@ export default function ColorFlowScreen() {
     setTiles(newTiles);
   };
 
-  const spreadColor = (tile: FlowTile) => {
-    console.log('User tapped tile for color flow:', tile.id);
+  const spreadColor = async (tile: FlowTile) => {
+    console.log('User tapped tile in color flow mode:', tile.id);
     
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     
-    setTapCount(prev => prev + 1);
+    const newColor = FLOW_COLORS[Math.floor(Math.random() * FLOW_COLORS.length)];
     
-    const distance = (t: FlowTile) => {
-      return Math.sqrt(Math.pow(t.row - tile.row, 2) + Math.pow(t.col - tile.col, 2));
-    };
-    
-    tiles.forEach(t => {
-      const dist = distance(t);
-      const delay = dist * 50;
-      
-      setTimeout(() => {
-        setTiles(prev => prev.map(prevTile => 
-          prevTile.id === t.id ? { ...prevTile, color: currentColor } : prevTile
-        ));
-      }, delay);
+    const affectedTiles = tiles.filter(t => {
+      const distance = Math.abs(t.row - tile.row) + Math.abs(t.col - tile.col);
+      return distance <= 2;
     });
     
-    setTimeout(() => {
-      const nextColorIndex = (FLOW_COLORS.indexOf(currentColor) + 1) % FLOW_COLORS.length;
-      setCurrentColor(FLOW_COLORS[nextColorIndex]);
-    }, 500);
+    const newTapsCount = tapsCount + 1;
+    setTapsCount(newTapsCount);
+    
+    const pointsEarned = affectedTiles.length * 2;
+    const newScore = score + pointsEarned;
+    setScore(newScore);
+    
+    await updateStats(affectedTiles.length, pointsEarned);
+    console.log('Updated stats - tiles colored:', affectedTiles.length, 'score:', pointsEarned);
+    
+    affectedTiles.forEach((t, index) => {
+      setTimeout(() => {
+        setTiles(prev => prev.map(prevTile => 
+          prevTile.id === t.id ? { ...prevTile, color: newColor } : prevTile
+        ));
+      }, index * 30);
+    });
   };
 
   const resetGrid = () => {
-    console.log('User reset color flow');
-    setTapCount(0);
-    setCurrentColor(FLOW_COLORS[0]);
+    console.log('User reset color flow grid');
+    setTapsCount(0);
+    setScore(0);
     setTiles([]);
     setTimeout(generateGrid, 100);
   };
 
-  const tapCountText = tapCount.toString();
+  const scoreText = score.toString();
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -119,20 +126,13 @@ export default function ColorFlowScreen() {
       />
       
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        {/* Stats Header */}
         <View style={styles.statsHeader}>
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: colors.accent }]}>
-              {tapCountText}
+            <Text style={[styles.statValue, { color: colors.primary }]}>
+              {scoreText}
             </Text>
             <Text style={[styles.statLabel, { color: textColor }]}>
-              Taps
-            </Text>
-          </View>
-          
-          <View style={[styles.colorPreview, { backgroundColor: currentColor }]}>
-            <Text style={styles.colorLabel}>
-              Next
+              Score
             </Text>
           </View>
           
@@ -148,7 +148,6 @@ export default function ColorFlowScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Grid */}
         <View style={styles.gridContainer}>
           <View style={styles.grid}>
             {tiles.map((tile) => {
@@ -158,8 +157,8 @@ export default function ColorFlowScreen() {
                   style={[
                     styles.tile,
                     {
-                      width: TILE_SIZE - 4,
-                      height: TILE_SIZE - 4,
+                      width: TILE_SIZE,
+                      height: TILE_SIZE,
                       backgroundColor: tile.color,
                     },
                   ]}
@@ -175,13 +174,9 @@ export default function ColorFlowScreen() {
           </View>
         </View>
 
-        {/* Instructions */}
         <View style={styles.instructions}>
           <Text style={[styles.instructionText, { color: textColor }]}>
-            Tap anywhere to spread colors
-          </Text>
-          <Text style={[styles.instructionSubtext, { color: textColor }]}>
-            Watch the colors flow and blend
+            Tap to spread colors across the grid
           </Text>
         </View>
       </SafeAreaView>
@@ -214,18 +209,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  colorPreview: {
-    width: 80,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  colorLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
   resetButton: {
     width: 48,
     height: 48,
@@ -242,16 +225,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     width: width - 40,
-    padding: 2,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   tile: {
-    margin: 2,
-    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   tileTouchable: {
     width: '100%',
     height: '100%',
-    borderRadius: 4,
   },
   instructions: {
     paddingHorizontal: 20,
@@ -261,10 +244,5 @@ const styles = StyleSheet.create({
   instructionText: {
     fontSize: 14,
     opacity: 0.7,
-    marginBottom: 4,
-  },
-  instructionSubtext: {
-    fontSize: 12,
-    opacity: 0.5,
   },
 });

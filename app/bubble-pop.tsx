@@ -7,6 +7,7 @@ import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
+import { useStatsTracking } from "@/hooks/useStatsTracking";
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,7 +41,10 @@ export default function BubblePopScreen() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [poppedCount, setPoppedCount] = useState(0);
   const [chainCount, setChainCount] = useState(0);
+  const [score, setScore] = useState(0);
   const chainTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const { updateStats } = useStatsTracking();
 
   useEffect(() => {
     generateBubbles();
@@ -75,7 +79,7 @@ export default function BubblePopScreen() {
     setBubbles(newBubbles);
   };
 
-  const popBubble = (bubble: Bubble) => {
+  const popBubble = async (bubble: Bubble) => {
     console.log('User popped bubble:', bubble.id);
     
     if (Platform.OS !== 'web') {
@@ -96,24 +100,33 @@ export default function BubblePopScreen() {
       }),
     ]).start(() => {
       setBubbles(prev => prev.filter(b => b.id !== bubble.id));
-      setPoppedCount(prev => prev + 1);
-      
-      if (chainTimeoutRef.current) {
-        clearTimeout(chainTimeoutRef.current);
-      }
-      setChainCount(prev => prev + 1);
-      
-      chainTimeoutRef.current = setTimeout(() => {
-        setChainCount(0);
-      }, 500);
       
       if (bubbles.length <= 5) {
         setTimeout(generateBubbles, 300);
       }
     });
+    
+    const newPoppedCount = poppedCount + 1;
+    setPoppedCount(newPoppedCount);
+    
+    const pointsEarned = chainCount > 1 ? 5 * chainCount : 5;
+    const newScore = score + pointsEarned;
+    setScore(newScore);
+    
+    if (chainTimeoutRef.current) {
+      clearTimeout(chainTimeoutRef.current);
+    }
+    setChainCount(prev => prev + 1);
+    
+    chainTimeoutRef.current = setTimeout(() => {
+      setChainCount(0);
+    }, 500);
+    
+    await updateStats(1, pointsEarned);
+    console.log('Updated stats - bubbles: 1, score:', pointsEarned);
   };
 
-  const handleLongPress = (bubble: Bubble) => {
+  const handleLongPress = async (bubble: Bubble) => {
     console.log('User long-pressed bubble for mega pop:', bubble.id);
     
     if (Platform.OS !== 'web') {
@@ -134,19 +147,30 @@ export default function BubblePopScreen() {
       }),
     ]).start(() => {
       setBubbles(prev => prev.filter(b => b.id !== bubble.id));
-      setPoppedCount(prev => prev + 3);
     });
+    
+    const newPoppedCount = poppedCount + 3;
+    setPoppedCount(newPoppedCount);
+    
+    const pointsEarned = 15;
+    const newScore = score + pointsEarned;
+    setScore(newScore);
+    
+    await updateStats(3, pointsEarned);
+    console.log('Updated stats - bubbles: 3, score:', pointsEarned);
   };
 
   const resetGame = () => {
     console.log('User reset bubble pop game');
     setPoppedCount(0);
     setChainCount(0);
+    setScore(0);
     setBubbles([]);
     setTimeout(generateBubbles, 100);
   };
 
   const chainMultiplierText = chainCount > 1 ? `x${chainCount}` : '';
+  const scoreText = score.toString();
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -163,14 +187,13 @@ export default function BubblePopScreen() {
       />
       
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        {/* Stats Header */}
         <View style={styles.statsHeader}>
           <View style={styles.statBox}>
             <Text style={[styles.statValue, { color: colors.primary }]}>
-              {poppedCount}
+              {scoreText}
             </Text>
             <Text style={[styles.statLabel, { color: textColor }]}>
-              Popped
+              Score
             </Text>
           </View>
           
@@ -197,7 +220,6 @@ export default function BubblePopScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Bubble Container */}
         <View style={styles.bubbleContainer}>
           {bubbles.map((bubble) => {
             return (
@@ -230,7 +252,6 @@ export default function BubblePopScreen() {
           })}
         </View>
 
-        {/* Instructions */}
         <View style={styles.instructions}>
           <Text style={[styles.instructionText, { color: textColor }]}>
             Tap to pop • Long press for mega pop
