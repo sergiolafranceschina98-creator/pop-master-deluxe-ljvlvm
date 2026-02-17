@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform } from "react-native";
+import { StyleSheet, View, Text, ScrollView, ActivityIndicator, Platform } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -37,6 +37,8 @@ export default function ProfileScreen() {
   const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
   const textSecondaryColor = isDark ? colors.textSecondaryDark : colors.textSecondary;
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const [unlocks, setUnlocks] = useState<UnlockItem[]>([
     {
@@ -92,6 +94,7 @@ export default function ProfileScreen() {
 
   const loadStats = useCallback(async () => {
     try {
+      setIsLoading(true);
       console.log('=== PROFILE: Loading stats from AsyncStorage ===');
       
       const todayStatsJson = await AsyncStorage.getItem('todayStats');
@@ -155,6 +158,8 @@ export default function ProfileScreen() {
       console.log('=== PROFILE: Stats loading complete ===');
     } catch (error) {
       console.error('PROFILE: Error loading stats:', error);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -178,7 +183,22 @@ export default function ProfileScreen() {
   const allTimeGamesText = allTimeStats.totalGamesPlayed.toString();
   const allTimeHighScoreText = allTimeStats.allTimeHighScore.toString();
 
-  console.log('PROFILE: Rendering - Today:', todayStats, 'All-time:', allTimeStats);
+  console.log('PROFILE: Rendering - Loading:', isLoading, 'Today:', todayStats, 'All-time:', allTimeStats);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: bgColor }]}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: textSecondaryColor }]}>
+              Loading your stats...
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -379,6 +399,15 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
   scrollView: {
     flex: 1,
