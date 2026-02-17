@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "PopMaster Deluxe",
@@ -42,7 +41,8 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "backendUrl": "https://2bw3gu5ssb3nvx4m27cb6f87jpce2rvp.app.specular.dev"
     }
   }
 }
