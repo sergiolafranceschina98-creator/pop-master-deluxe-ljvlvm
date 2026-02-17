@@ -88,7 +88,7 @@ export default function RushModeScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (spawnRef.current) clearInterval(spawnRef.current);
     
-    await updateStats(bubblesPopped, score);
+    await updateStats(bubblesPopped, score, 'Rush Mode', 'timer', colors.rushMode);
   };
 
   const spawnBubble = () => {
