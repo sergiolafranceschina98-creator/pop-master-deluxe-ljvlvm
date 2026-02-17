@@ -1,3 +1,4 @@
+
 import "react-native-reanimated";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
@@ -15,6 +16,7 @@ import {
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 // Note: Error logging is auto-initialized via index.ts import
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -36,6 +38,21 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  // Reset all stats to zero on app launch
+  useEffect(() => {
+    const resetStats = async () => {
+      try {
+        console.log('Resetting all stats to zero on app launch...');
+        await AsyncStorage.removeItem('todayStats');
+        await AsyncStorage.removeItem('allTimeStats');
+        console.log('All stats have been reset to zero');
+      } catch (error) {
+        console.error('Error resetting stats:', error);
+      }
+    };
+    resetStats();
+  }, []);
 
   React.useEffect(() => {
     if (

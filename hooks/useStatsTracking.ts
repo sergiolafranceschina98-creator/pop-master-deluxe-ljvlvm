@@ -156,5 +156,16 @@ export function useStatsTracking() {
     }
   }, []);
 
-  return { updateStats, loadStats };
+  const resetAllStats = useCallback(async () => {
+    try {
+      console.log('Resetting all stats to zero...');
+      await AsyncStorage.removeItem('todayStats');
+      await AsyncStorage.removeItem('allTimeStats');
+      console.log('All stats have been reset to zero');
+    } catch (error) {
+      console.error('Error resetting stats:', error);
+    }
+  }, []);
+
+  return { updateStats, loadStats, resetAllStats };
 }
