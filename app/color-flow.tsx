@@ -7,7 +7,6 @@ import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
-import { useStatsTracking } from "@/hooks/useStatsTracking";
 
 const { width } = Dimensions.get('window');
 
@@ -41,8 +40,6 @@ export default function ColorFlowScreen() {
   const [tiles, setTiles] = useState<FlowTile[]>([]);
   const [tapsCount, setTapsCount] = useState(0);
   const [score, setScore] = useState(0);
-  
-  const { updateStats } = useStatsTracking();
 
   useEffect(() => {
     generateGrid();
@@ -89,8 +86,7 @@ export default function ColorFlowScreen() {
     const newScore = score + pointsEarned;
     setScore(newScore);
     
-    await updateStats(affectedTiles.length, pointsEarned);
-    console.log('Updated stats - tiles colored:', affectedTiles.length, 'score:', pointsEarned);
+    console.log('Color flow - tiles colored:', affectedTiles.length, 'score:', pointsEarned);
     
     affectedTiles.forEach((t, index) => {
       setTimeout(() => {
