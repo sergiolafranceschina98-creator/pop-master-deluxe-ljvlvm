@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "PopMaster Deluxe",
-    "slug": "popmaster-deluxe",
+    "name": "Pop Master Deluxe",
+    "slug": "Pop Master Deluxe",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-aem.png",
@@ -36,7 +36,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "popmaster-deluxe",
+    "scheme": "Pop Master Deluxe",
     "experiments": {
       "typedRoutes": true
     },

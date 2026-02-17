@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Dimensions } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,6 +7,8 @@ import { colors } from "@/styles/commonStyles";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { IconSymbol } from "@/components/IconSymbol";
+import { useFocusEffect } from "@react-navigation/native";
+import { useStatsTracking } from "@/hooks/useStatsTracking";
 
 const { width } = Dimensions.get('window');
 
@@ -20,14 +22,44 @@ interface GameMode {
   route: string;
 }
 
+interface DailyStats {
+  date: string;
+  bubblesPopped: number;
+  gamesPlayed: number;
+  highScore: number;
+  totalScore: number;
+}
+
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const isDark = theme.dark;
+  const { loadStats } = useStatsTracking();
+  
+  const [todayStats, setTodayStats] = useState<DailyStats>({
+    date: new Date().toDateString(),
+    bubblesPopped: 0,
+    gamesPlayed: 0,
+    highScore: 0,
+    totalScore: 0,
+  });
   
   const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
   const textSecondaryColor = isDark ? colors.textSecondaryDark : colors.textSecondary;
+
+  // Load stats when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const fetchStats = async () => {
+        console.log('Home screen focused - loading stats...');
+        const { todayStats: loadedTodayStats } = await loadStats();
+        setTodayStats(loadedTodayStats);
+        console.log('Stats loaded on home screen:', loadedTodayStats);
+      };
+      fetchStats();
+    }, [loadStats])
+  );
 
   const gameModes: GameMode[] = [
     {
@@ -72,6 +104,9 @@ export default function HomeScreen() {
     console.log('User tapped game mode:', mode.title);
     router.push(mode.route as any);
   };
+
+  const bubblesDisplay = todayStats.bubblesPopped.toString();
+  const gamesDisplay = todayStats.gamesPlayed.toString();
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -130,7 +165,7 @@ export default function HomeScreen() {
             })}
           </View>
 
-          {/* Quick Stats */}
+          {/* Today's Stats */}
           <View style={[styles.statsCard, { 
             backgroundColor: isDark ? colors.cardDark : colors.card,
             borderColor: isDark ? colors.cardBorderDark : colors.cardBorder,
@@ -141,7 +176,7 @@ export default function HomeScreen() {
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.primary }]}>
-                  0
+                  {bubblesDisplay}
                 </Text>
                 <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
                   Bubbles Popped
@@ -149,10 +184,10 @@ export default function HomeScreen() {
               </View>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.secondary }]}>
-                  0
+                  {gamesDisplay}
                 </Text>
                 <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
-                  Chains Created
+                  Games Played
                 </Text>
               </View>
             </View>

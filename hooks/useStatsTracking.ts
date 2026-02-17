@@ -86,5 +86,75 @@ export function useStatsTracking() {
     }
   }, []);
 
-  return { updateStats };
+  const loadStats = useCallback(async () => {
+    try {
+      console.log('Loading stats from AsyncStorage...');
+      
+      const todayStatsJson = await AsyncStorage.getItem('todayStats');
+      const allTimeStatsJson = await AsyncStorage.getItem('allTimeStats');
+      
+      const today = new Date().toDateString();
+      
+      let todayStats: DailyStats;
+      if (todayStatsJson) {
+        const savedTodayStats = JSON.parse(todayStatsJson);
+        if (savedTodayStats.date === today) {
+          todayStats = savedTodayStats;
+        } else {
+          // Reset daily stats if date changed
+          todayStats = {
+            date: today,
+            bubblesPopped: 0,
+            gamesPlayed: 0,
+            highScore: 0,
+            totalScore: 0,
+          };
+          await AsyncStorage.setItem('todayStats', JSON.stringify(todayStats));
+        }
+      } else {
+        todayStats = {
+          date: today,
+          bubblesPopped: 0,
+          gamesPlayed: 0,
+          highScore: 0,
+          totalScore: 0,
+        };
+      }
+      
+      let allTimeStats: AllTimeStats;
+      if (allTimeStatsJson) {
+        allTimeStats = JSON.parse(allTimeStatsJson);
+      } else {
+        allTimeStats = {
+          totalBubblesPopped: 0,
+          totalGamesPlayed: 0,
+          allTimeHighScore: 0,
+        };
+      }
+      
+      console.log('Loaded today stats:', todayStats);
+      console.log('Loaded all-time stats:', allTimeStats);
+      
+      return { todayStats, allTimeStats };
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      const today = new Date().toDateString();
+      return {
+        todayStats: {
+          date: today,
+          bubblesPopped: 0,
+          gamesPlayed: 0,
+          highScore: 0,
+          totalScore: 0,
+        },
+        allTimeStats: {
+          totalBubblesPopped: 0,
+          totalGamesPlayed: 0,
+          allTimeHighScore: 0,
+        },
+      };
+    }
+  }, []);
+
+  return { updateStats, loadStats };
 }
