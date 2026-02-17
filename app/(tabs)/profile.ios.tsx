@@ -5,6 +5,7 @@ import { useTheme } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface UnlockItem {
   id: string;
@@ -12,6 +13,14 @@ interface UnlockItem {
   description: string;
   unlocked: boolean;
   icon: string;
+}
+
+interface DailyStats {
+  date: string;
+  bubblesPopped: number;
+  gamesPlayed: number;
+  highScore: number;
+  totalScore: number;
 }
 
 export default function ProfileScreen() {
@@ -60,10 +69,94 @@ export default function ProfileScreen() {
     },
   ]);
 
+  const [todayStats, setTodayStats] = useState<DailyStats>({
+    date: new Date().toDateString(),
+    bubblesPopped: 0,
+    gamesPlayed: 0,
+    highScore: 0,
+    totalScore: 0,
+  });
+
+  const [allTimeStats, setAllTimeStats] = useState({
+    totalBubblesPopped: 0,
+    totalGamesPlayed: 0,
+    allTimeHighScore: 0,
+  });
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      console.log('Loading stats from AsyncStorage');
+      
+      const todayStatsJson = await AsyncStorage.getItem('todayStats');
+      const allTimeStatsJson = await AsyncStorage.getItem('allTimeStats');
+      
+      if (todayStatsJson) {
+        const savedTodayStats = JSON.parse(todayStatsJson);
+        const today = new Date().toDateString();
+        
+        if (savedTodayStats.date === today) {
+          console.log('Loaded today stats:', savedTodayStats);
+          setTodayStats(savedTodayStats);
+        } else {
+          console.log('New day detected, resetting today stats');
+          const newTodayStats = {
+            date: today,
+            bubblesPopped: 0,
+            gamesPlayed: 0,
+            highScore: 0,
+            totalScore: 0,
+          };
+          setTodayStats(newTodayStats);
+          await AsyncStorage.setItem('todayStats', JSON.stringify(newTodayStats));
+        }
+      } else {
+        console.log('No today stats found, initializing');
+        const newTodayStats = {
+          date: new Date().toDateString(),
+          bubblesPopped: 0,
+          gamesPlayed: 0,
+          highScore: 0,
+          totalScore: 0,
+        };
+        setTodayStats(newTodayStats);
+        await AsyncStorage.setItem('todayStats', JSON.stringify(newTodayStats));
+      }
+      
+      if (allTimeStatsJson) {
+        const savedAllTimeStats = JSON.parse(allTimeStatsJson);
+        console.log('Loaded all-time stats:', savedAllTimeStats);
+        setAllTimeStats(savedAllTimeStats);
+      } else {
+        console.log('No all-time stats found, initializing');
+        const newAllTimeStats = {
+          totalBubblesPopped: 0,
+          totalGamesPlayed: 0,
+          allTimeHighScore: 0,
+        };
+        setAllTimeStats(newAllTimeStats);
+        await AsyncStorage.setItem('allTimeStats', JSON.stringify(newAllTimeStats));
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
+
   const unlockedCount = unlocks.filter(u => u.unlocked).length;
   const totalCount = unlocks.length;
   const unlockedCountText = unlockedCount.toString();
   const totalCountText = totalCount.toString();
+  
+  const todayBubblesText = todayStats.bubblesPopped.toString();
+  const todayGamesText = todayStats.gamesPlayed.toString();
+  const todayHighScoreText = todayStats.highScore.toString();
+  
+  const allTimeBubblesText = allTimeStats.totalBubblesPopped.toString();
+  const allTimeGamesText = allTimeStats.totalGamesPlayed.toString();
+  const allTimeHighScoreText = allTimeStats.allTimeHighScore.toString();
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -73,47 +166,125 @@ export default function ProfileScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, { color: textColor }]}>
               Progress
             </Text>
             <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-              Your unlocks and achievements
+              Your stats and achievements
             </Text>
           </View>
 
-          {/* Stats Card */}
-          <View style={[styles.statsCard, { 
-            backgroundColor: isDark ? colors.cardDark : colors.card,
-            borderColor: isDark ? colors.cardBorderDark : colors.cardBorder,
-          }]}>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.primary }]}>
-                  {unlockedCountText}
-                </Text>
-                <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
-                  Unlocked
-                </Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.secondary }]}>
-                  {totalCountText}
-                </Text>
-                <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
-                  Total Items
-                </Text>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>
+              Today's Stats
+            </Text>
+            
+            <View style={[styles.statsCard, { 
+              backgroundColor: isDark ? colors.cardDark : colors.card,
+              borderColor: isDark ? colors.cardBorderDark : colors.cardBorder,
+            }]}>
+              <View style={styles.statsGrid}>
+                <View style={styles.statGridItem}>
+                  <Text style={[styles.statValue, { color: colors.bubblePink }]}>
+                    {todayBubblesText}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Bubbles Popped
+                  </Text>
+                </View>
+                
+                <View style={styles.statGridItem}>
+                  <Text style={[styles.statValue, { color: colors.bubblePurple }]}>
+                    {todayGamesText}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Games Played
+                  </Text>
+                </View>
+                
+                <View style={styles.statGridItem}>
+                  <Text style={[styles.statValue, { color: colors.bubbleYellow }]}>
+                    {todayHighScoreText}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    High Score
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
 
-          {/* Unlocks Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>
+              All-Time Stats
+            </Text>
+            
+            <View style={[styles.statsCard, { 
+              backgroundColor: isDark ? colors.cardDark : colors.card,
+              borderColor: isDark ? colors.cardBorderDark : colors.cardBorder,
+            }]}>
+              <View style={styles.statsGrid}>
+                <View style={styles.statGridItem}>
+                  <Text style={[styles.statValue, { color: colors.primary }]}>
+                    {allTimeBubblesText}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Total Bubbles
+                  </Text>
+                </View>
+                
+                <View style={styles.statGridItem}>
+                  <Text style={[styles.statValue, { color: colors.secondary }]}>
+                    {allTimeGamesText}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Total Games
+                  </Text>
+                </View>
+                
+                <View style={styles.statGridItem}>
+                  <Text style={[styles.statValue, { color: colors.rushMode }]}>
+                    {allTimeHighScoreText}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Best Score
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: textColor }]}>
               Skins & Patterns
             </Text>
+            
+            <View style={[styles.statsCard, { 
+              backgroundColor: isDark ? colors.cardDark : colors.card,
+              borderColor: isDark ? colors.cardBorderDark : colors.cardBorder,
+              marginBottom: 16,
+            }]}>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, { color: colors.primary }]}>
+                    {unlockedCountText}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Unlocked
+                  </Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, { color: colors.secondary }]}>
+                    {totalCountText}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Total Items
+                  </Text>
+                </View>
+              </View>
+            </View>
             
             {unlocks.map((unlock, index) => {
               const isUnlocked = unlock.unlocked;
@@ -169,7 +340,6 @@ export default function ProfileScreen() {
             })}
           </View>
 
-          {/* Info */}
           <View style={styles.infoSection}>
             <Text style={[styles.infoText, { color: textSecondaryColor }]}>
               Keep playing to unlock more skins and patterns!
@@ -210,16 +380,33 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
   },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
   statsCard: {
     borderRadius: 20,
     padding: 24,
     borderWidth: 2,
-    marginBottom: 32,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  statGridItem: {
+    alignItems: 'center',
+    width: '30%',
+    marginBottom: 16,
   },
   statItem: {
     alignItems: 'center',
@@ -231,20 +418,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBorder,
   },
   statValue: {
-    fontSize: 40,
+    fontSize: 32,
     fontWeight: 'bold',
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     marginTop: 4,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    textAlign: 'center',
   },
   unlockCard: {
     flexDirection: 'row',

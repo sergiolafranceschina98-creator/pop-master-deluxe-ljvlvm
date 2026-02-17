@@ -7,6 +7,7 @@ import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import * as Haptics from "expo-haptics";
+import { useStatsTracking } from "@/hooks/useStatsTracking";
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,11 +41,14 @@ export default function RushModeScreen() {
   
   const [bubbles, setBubbles] = useState<RushBubble[]>([]);
   const [score, setScore] = useState(0);
+  const [bubblesPopped, setBubblesPopped] = useState(0);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const spawnRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const { updateStats } = useStatsTracking();
 
   useEffect(() => {
     return () => {
@@ -58,6 +62,7 @@ export default function RushModeScreen() {
     setIsPlaying(true);
     setGameOver(false);
     setScore(0);
+    setBubblesPopped(0);
     setTimeLeft(GAME_DURATION);
     setBubbles([]);
     
@@ -76,12 +81,14 @@ export default function RushModeScreen() {
     }, 500);
   };
 
-  const endGame = () => {
-    console.log('Rush mode game ended, final score:', score);
+  const endGame = async () => {
+    console.log('Rush mode game ended, final score:', score, 'bubbles popped:', bubblesPopped);
     setIsPlaying(false);
     setGameOver(true);
     if (timerRef.current) clearInterval(timerRef.current);
     if (spawnRef.current) clearInterval(spawnRef.current);
+    
+    await updateStats(bubblesPopped, score);
   };
 
   const spawnBubble = () => {
@@ -133,6 +140,7 @@ export default function RushModeScreen() {
     
     setBubbles(prev => prev.filter(b => b.id !== bubble.id));
     setScore(prev => prev + 10);
+    setBubblesPopped(prev => prev + 1);
   };
 
   const timeLeftText = timeLeft.toString();
@@ -174,7 +182,6 @@ export default function RushModeScreen() {
 
         {isPlaying && (
           <>
-            {/* Stats Header */}
             <View style={styles.statsHeader}>
               <View style={styles.statBox}>
                 <Text style={[styles.statValue, { color: colors.rushMode }]}>
@@ -195,7 +202,6 @@ export default function RushModeScreen() {
               </View>
             </View>
 
-            {/* Bubble Container */}
             <View style={styles.bubbleContainer}>
               {bubbles.map((bubble) => {
                 return (
