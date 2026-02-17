@@ -7,6 +7,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 
 interface UnlockItem {
   id: string;
@@ -16,27 +17,64 @@ interface UnlockItem {
   icon: string;
 }
 
-interface DailyStats {
-  date: string;
-  bubblesPopped: number;
-  gamesPlayed: number;
-  highScore: number;
-  totalScore: number;
-}
-
 interface AllTimeStats {
   totalBubblesPopped: number;
   totalGamesPlayed: number;
   allTimeHighScore: number;
 }
 
+interface QuickAction {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  route: string;
+}
+
 export default function ProfileScreen() {
   const theme = useTheme();
   const isDark = theme.dark;
+  const router = useRouter();
   
   const bgColor = isDark ? colors.backgroundDark : colors.background;
   const textColor = isDark ? colors.textDark : colors.text;
   const textSecondaryColor = isDark ? colors.textSecondaryDark : colors.textSecondary;
+
+  const quickActions: QuickAction[] = [
+    {
+      id: 'bubble-pop',
+      title: 'Bubble Pop',
+      description: 'Classic popping fun',
+      icon: 'bubble-chart',
+      color: colors.bubblePink,
+      route: '/bubble-pop',
+    },
+    {
+      id: 'chain-pop',
+      title: 'Chain Pop',
+      description: 'Create chain reactions',
+      icon: 'grid-on',
+      color: colors.bubblePurple,
+      route: '/chain-pop',
+    },
+    {
+      id: 'color-flow',
+      title: 'Color Flow',
+      description: 'Zen color spreading',
+      icon: 'palette',
+      color: colors.bubbleCyan,
+      route: '/color-flow',
+    },
+    {
+      id: 'rush-mode',
+      title: 'Rush Mode',
+      description: 'Beat the clock!',
+      icon: 'timer',
+      color: colors.rushMode,
+      route: '/rush-mode',
+    },
+  ];
 
   const [unlocks, setUnlocks] = useState<UnlockItem[]>([
     {
@@ -76,14 +114,6 @@ export default function ProfileScreen() {
     },
   ]);
 
-  const [todayStats, setTodayStats] = useState<DailyStats>({
-    date: new Date().toDateString(),
-    bubblesPopped: 0,
-    gamesPlayed: 0,
-    highScore: 0,
-    totalScore: 0,
-  });
-
   const [allTimeStats, setAllTimeStats] = useState<AllTimeStats>({
     totalBubblesPopped: 0,
     totalGamesPlayed: 0,
@@ -94,47 +124,9 @@ export default function ProfileScreen() {
     try {
       console.log('=== PROFILE: Loading stats from AsyncStorage ===');
       
-      const todayStatsJson = await AsyncStorage.getItem('todayStats');
       const allTimeStatsJson = await AsyncStorage.getItem('allTimeStats');
       
-      console.log('PROFILE: Raw todayStats JSON:', todayStatsJson);
       console.log('PROFILE: Raw allTimeStats JSON:', allTimeStatsJson);
-      
-      const today = new Date().toDateString();
-      console.log('PROFILE: Today date string:', today);
-      
-      if (todayStatsJson) {
-        const savedTodayStats = JSON.parse(todayStatsJson);
-        console.log('PROFILE: Parsed today stats:', savedTodayStats);
-        console.log('PROFILE: Saved date:', savedTodayStats.date, 'Current date:', today);
-        
-        if (savedTodayStats.date === today) {
-          console.log('PROFILE: Date matches! Setting today stats to:', savedTodayStats);
-          setTodayStats(savedTodayStats);
-        } else {
-          console.log('PROFILE: New day detected, resetting today stats');
-          const newTodayStats = {
-            date: today,
-            bubblesPopped: 0,
-            gamesPlayed: 0,
-            highScore: 0,
-            totalScore: 0,
-          };
-          setTodayStats(newTodayStats);
-          await AsyncStorage.setItem('todayStats', JSON.stringify(newTodayStats));
-        }
-      } else {
-        console.log('PROFILE: No today stats found in storage, initializing');
-        const newTodayStats = {
-          date: today,
-          bubblesPopped: 0,
-          gamesPlayed: 0,
-          highScore: 0,
-          totalScore: 0,
-        };
-        setTodayStats(newTodayStats);
-        await AsyncStorage.setItem('todayStats', JSON.stringify(newTodayStats));
-      }
       
       if (allTimeStatsJson) {
         const savedAllTimeStats = JSON.parse(allTimeStatsJson);
@@ -165,20 +157,21 @@ export default function ProfileScreen() {
     }, [loadStats])
   );
 
+  const handleQuickAction = (route: string) => {
+    console.log('PROFILE: Navigating to:', route);
+    router.push(route as any);
+  };
+
   const unlockedCount = unlocks.filter(u => u.unlocked).length;
   const totalCount = unlocks.length;
   const unlockedCountText = unlockedCount.toString();
   const totalCountText = totalCount.toString();
   
-  const todayBubblesText = todayStats.bubblesPopped.toString();
-  const todayGamesText = todayStats.gamesPlayed.toString();
-  const todayHighScoreText = todayStats.highScore.toString();
-  
   const allTimeBubblesText = allTimeStats.totalBubblesPopped.toString();
   const allTimeGamesText = allTimeStats.totalGamesPlayed.toString();
   const allTimeHighScoreText = allTimeStats.allTimeHighScore.toString();
 
-  console.log('PROFILE: Rendering - Today:', todayStats, 'All-time:', allTimeStats);
+  console.log('PROFILE: Rendering - All-time:', allTimeStats);
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -199,41 +192,41 @@ export default function ProfileScreen() {
 
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: textColor }]}>
-              Today&apos;s Stats
+              Quick Actions
             </Text>
             
-            <View style={[styles.statsCard, { 
-              backgroundColor: isDark ? colors.cardDark : colors.card,
-              borderColor: isDark ? colors.cardBorderDark : colors.cardBorder,
-            }]}>
-              <View style={styles.statsGrid}>
-                <View style={styles.statGridItem}>
-                  <Text style={[styles.statValue, { color: colors.bubblePink }]}>
-                    {todayBubblesText}
-                  </Text>
-                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
-                    Bubbles Popped
-                  </Text>
-                </View>
-                
-                <View style={styles.statGridItem}>
-                  <Text style={[styles.statValue, { color: colors.bubblePurple }]}>
-                    {todayGamesText}
-                  </Text>
-                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
-                    Games Played
-                  </Text>
-                </View>
-                
-                <View style={styles.statGridItem}>
-                  <Text style={[styles.statValue, { color: colors.bubbleYellow }]}>
-                    {todayHighScoreText}
-                  </Text>
-                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
-                    High Score
-                  </Text>
-                </View>
-              </View>
+            <View style={styles.quickActionsGrid}>
+              {quickActions.map((action, index) => {
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.quickActionCard,
+                      {
+                        backgroundColor: isDark ? colors.cardDark : colors.card,
+                        borderColor: isDark ? colors.cardBorderDark : colors.cardBorder,
+                      },
+                    ]}
+                    onPress={() => handleQuickAction(action.route)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.quickActionIcon, { backgroundColor: action.color }]}>
+                      <IconSymbol
+                        ios_icon_name={action.icon as any}
+                        android_material_icon_name={action.icon as any}
+                        size={28}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                    <Text style={[styles.quickActionTitle, { color: textColor }]}>
+                      {action.title}
+                    </Text>
+                    <Text style={[styles.quickActionDescription, { color: textSecondaryColor }]}>
+                      {action.description}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -409,6 +402,37 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  quickActionCard: {
+    width: '48%',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  quickActionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  quickActionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  quickActionDescription: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   statsCard: {
     borderRadius: 20,
