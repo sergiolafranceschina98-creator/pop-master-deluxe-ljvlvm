@@ -79,6 +79,8 @@ export function useStatsTracking() {
       
       await AsyncStorage.setItem('allTimeStats', JSON.stringify(allTimeStats));
       console.log('Updated all-time stats:', allTimeStats);
+      
+      console.log('Stats update complete - bubbles:', bubblesPopped, ', score:', score);
     } catch (error) {
       console.error('Error updating stats:', error);
     }

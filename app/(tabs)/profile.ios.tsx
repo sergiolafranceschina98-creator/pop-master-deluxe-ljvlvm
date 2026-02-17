@@ -92,28 +92,27 @@ export default function ProfileScreen() {
 
   const loadStats = useCallback(async () => {
     try {
-      console.log('Profile: Loading stats from AsyncStorage');
+      console.log('=== PROFILE: Loading stats from AsyncStorage ===');
       
       const todayStatsJson = await AsyncStorage.getItem('todayStats');
       const allTimeStatsJson = await AsyncStorage.getItem('allTimeStats');
       
+      console.log('PROFILE: Raw todayStats JSON:', todayStatsJson);
+      console.log('PROFILE: Raw allTimeStats JSON:', allTimeStatsJson);
+      
       const today = new Date().toDateString();
+      console.log('PROFILE: Today date string:', today);
       
       if (todayStatsJson) {
         const savedTodayStats = JSON.parse(todayStatsJson);
-        console.log('Profile: Raw today stats from storage:', savedTodayStats);
+        console.log('PROFILE: Parsed today stats:', savedTodayStats);
+        console.log('PROFILE: Saved date:', savedTodayStats.date, 'Current date:', today);
         
         if (savedTodayStats.date === today) {
-          console.log('Profile: Setting today stats to:', savedTodayStats);
-          setTodayStats({
-            date: savedTodayStats.date,
-            bubblesPopped: savedTodayStats.bubblesPopped,
-            gamesPlayed: savedTodayStats.gamesPlayed,
-            highScore: savedTodayStats.highScore,
-            totalScore: savedTodayStats.totalScore,
-          });
+          console.log('PROFILE: Date matches! Setting today stats to:', savedTodayStats);
+          setTodayStats(savedTodayStats);
         } else {
-          console.log('Profile: New day detected, resetting today stats');
+          console.log('PROFILE: New day detected, resetting today stats');
           const newTodayStats = {
             date: today,
             bubblesPopped: 0,
@@ -125,7 +124,7 @@ export default function ProfileScreen() {
           await AsyncStorage.setItem('todayStats', JSON.stringify(newTodayStats));
         }
       } else {
-        console.log('Profile: No today stats found, initializing');
+        console.log('PROFILE: No today stats found in storage, initializing');
         const newTodayStats = {
           date: today,
           bubblesPopped: 0,
@@ -139,15 +138,11 @@ export default function ProfileScreen() {
       
       if (allTimeStatsJson) {
         const savedAllTimeStats = JSON.parse(allTimeStatsJson);
-        console.log('Profile: Raw all-time stats from storage:', savedAllTimeStats);
-        console.log('Profile: Setting all-time stats to:', savedAllTimeStats);
-        setAllTimeStats({
-          totalBubblesPopped: savedAllTimeStats.totalBubblesPopped,
-          totalGamesPlayed: savedAllTimeStats.totalGamesPlayed,
-          allTimeHighScore: savedAllTimeStats.allTimeHighScore,
-        });
+        console.log('PROFILE: Parsed all-time stats:', savedAllTimeStats);
+        console.log('PROFILE: Setting all-time stats to:', savedAllTimeStats);
+        setAllTimeStats(savedAllTimeStats);
       } else {
-        console.log('Profile: No all-time stats found, initializing');
+        console.log('PROFILE: No all-time stats found in storage, initializing');
         const newAllTimeStats = {
           totalBubblesPopped: 0,
           totalGamesPlayed: 0,
@@ -156,14 +151,16 @@ export default function ProfileScreen() {
         setAllTimeStats(newAllTimeStats);
         await AsyncStorage.setItem('allTimeStats', JSON.stringify(newAllTimeStats));
       }
+      
+      console.log('=== PROFILE: Stats loading complete ===');
     } catch (error) {
-      console.error('Profile: Error loading stats:', error);
+      console.error('PROFILE: Error loading stats:', error);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      console.log('Profile: Screen focused, reloading stats');
+      console.log('PROFILE: Screen focused, reloading stats');
       loadStats();
     }, [loadStats])
   );
@@ -181,8 +178,7 @@ export default function ProfileScreen() {
   const allTimeGamesText = allTimeStats.totalGamesPlayed.toString();
   const allTimeHighScoreText = allTimeStats.allTimeHighScore.toString();
 
-  console.log('Profile: Rendering with today stats:', todayStats);
-  console.log('Profile: Rendering with all-time stats:', allTimeStats);
+  console.log('PROFILE: Rendering - Today:', todayStats, 'All-time:', allTimeStats);
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
