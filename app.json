@@ -1,0 +1,48 @@
+
+{
+  "expo": {
+    "name": "PopMaster Deluxe",
+    "slug": "popmaster-deluxe",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app-icon-aem.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/app-icon-aem.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FF6B9D"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.popmaster.deluxe",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app-icon-aem.png",
+        "backgroundColor": "#FF6B9D"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.popmaster.deluxe"
+    },
+    "web": {
+      "favicon": "./assets/images/final_quest_240x240.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      "expo-web-browser"
+    ],
+    "scheme": "popmaster-deluxe",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}
